@@ -6,23 +6,25 @@
   jobs:
     update-history:
       runs-on: ubuntu-latest
-      if: ${{ github.event.pages[0].page_name != 'Home' }}
       permissions:
         contents: write
 
       steps:
-        - name: Clone wiki
+        - name: Update Home.md 更新履歴
           env:
             TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          run: |
-            git clone
-  https://x-access-token:${TOKEN}@github.com/jin0989/my-repo.wiki.git wiki
-
-        - name: Update 更新履歴 in Home.md
-          env:
             ACTOR: ${{ github.actor }}
           run: |
+            PAGE_NAME=$(jq -r '.pages[0].page_name' "$GITHUB_EVENT_PATH")
+            if [ "$PAGE_NAME" = "Home" ]; then
+              echo "Home.md 自身の更新のためスキップ"
+              exit 0
+            fi
+
+            git clone
+  https://x-access-token:${TOKEN}@github.com/jin0989/my-repo.wiki.git wiki
             cd wiki
+
             PAGE_TITLE=$(jq -r '.pages[0].title' "$GITHUB_EVENT_PATH")
             PAGE_URL=$(jq -r '.pages[0].html_url' "$GITHUB_EVENT_PATH")
             PAGE_ACTION=$(jq -r '.pages[0].action' "$GITHUB_EVENT_PATH")
@@ -39,9 +41,6 @@
               printf "\n## 更新履歴\n%s\n" "$NEW_LINE" >> Home.md
             fi
 
-        - name: Commit and push
-          run: |
-            cd wiki
             git config user.name "github-actions[bot]"
             git config user.email
   "github-actions[bot]@users.noreply.github.com"
