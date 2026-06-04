@@ -1,0 +1,51 @@
+  name: Update Wiki Home History
+
+  on:
+    gollum:
+
+  jobs:
+    update-history:
+      runs-on: ubuntu-latest
+      if: ${{ github.event.pages[0].page_name != 'Home' }}
+      permissions:
+        contents: write
+
+      steps:
+        - name: Clone wiki
+          env:
+            TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          run: |
+            git clone
+  https://x-access-token:${TOKEN}@github.com/jin0989/my-repo.wiki.git wiki
+
+        - name: Update 更新履歴 in Home.md
+          env:
+            ACTOR: ${{ github.actor }}
+          run: |
+            cd wiki
+            PAGE_TITLE=$(jq -r '.pages[0].title' "$GITHUB_EVENT_PATH")
+            PAGE_URL=$(jq -r '.pages[0].html_url' "$GITHUB_EVENT_PATH")
+            PAGE_ACTION=$(jq -r '.pages[0].action' "$GITHUB_EVENT_PATH")
+            DATE_STR=$(date -u '+%Y-%m-%d')
+            ACTION_JP=$([ "$PAGE_ACTION" = "created" ] && echo "作成" ||
+  echo "更新")
+            NEW_LINE="- ${DATE_STR} [${PAGE_TITLE}](${PAGE_URL})
+  を${ACTION_JP} (@${ACTOR})"
+
+            if grep -q "^## 更新履歴" Home.md; then
+              awk -v new="$NEW_LINE" '/^## 更新履歴/{print; print new;
+  next}1' Home.md > Home.tmp && mv Home.tmp Home.md
+            else
+              printf "\n## 更新履歴\n%s\n" "$NEW_LINE" >> Home.md
+            fi
+
+        - name: Commit and push
+          run: |
+            cd wiki
+            git config user.name "github-actions[bot]"
+            git config user.email
+  "github-actions[bot]@users.noreply.github.com"
+            git add Home.md
+            git diff --cached --quiet || git commit -m "chore: update
+  更新履歴"
+            git push
